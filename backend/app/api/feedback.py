@@ -69,3 +69,10 @@ def list_feedback(
         "offset": offset,
         "limit": limit,
     }
+
+
+@router.get("/{feedback_id}")
+def get_feedback(
+    feedback_id: str, actor: User = Depends(current_user), db: Session = Depends(get_db)
+):
+    return feedback_payload(db, actor, find_feedback(db, actor, feedback_id))
