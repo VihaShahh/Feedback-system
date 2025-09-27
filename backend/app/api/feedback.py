@@ -49,3 +49,23 @@ def create_feedback(
     db.flush()
     audit(db, actor, "feedback.drafted", feedback.id)
     return feedback_payload(db, actor, feedback)
+
+
+@router.get("")
+def list_feedback(
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=25, ge=1, le=100),
+    actor: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    query = visible_feedback(actor).where(Feedback.state != "archived")
+    total = db.scalar(select(func.count()).select_from(query.subquery()))
+    records = db.scalars(
+        query.order_by(Feedback.updated_at.desc(), Feedback.id).offset(offset).limit(limit)
+    ).all()
+    return {
+        "items": [feedback_payload(db, actor, record) for record in records],
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+    }
