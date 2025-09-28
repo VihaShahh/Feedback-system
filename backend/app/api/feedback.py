@@ -76,3 +76,30 @@ def get_feedback(
     feedback_id: str, actor: User = Depends(current_user), db: Session = Depends(get_db)
 ):
     return feedback_payload(db, actor, find_feedback(db, actor, feedback_id))
+
+
+@router.patch("/{feedback_id}")
+def edit_feedback(
+    feedback_id: str,
+    data: FeedbackEdit,
+    actor: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    feedback = writable_feedback(db, actor, feedback_id)
+    if feedback.state != "draft":
+        fail(409, "Only drafts can be edited")
+    values = data.model_dump(exclude={"version"})
+    change_feedback(
+        db, feedback, data.version, **values, acknowledged_at=None, acknowledged_version=None
+    )
+    if feedback.state == "published":
+        revision(db, feedback, actor)
+        notify(
+            db,
+            feedback.employee_id,
+            "feedback.revised",
+            "Your feedback has been updated",
+            feedback.id,
+        )
+    audit(db, actor, "feedback.edited", feedback.id)
+    return feedback_payload(db, actor, feedback)
