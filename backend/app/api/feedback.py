@@ -126,3 +126,39 @@ def publish_feedback(
     )
     audit(db, actor, "feedback.published", feedback.id)
     return feedback_payload(db, actor, feedback)
+
+
+@router.post("/{feedback_id}/acknowledge")
+def acknowledge_feedback(
+    feedback_id: str,
+    data: VersionInput,
+    actor: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    feedback = find_feedback(db, actor, feedback_id)
+    if feedback.employee_id != actor.id:
+        fail(403, "Only the recipient can acknowledge this feedback")
+    if feedback.state != "published" or feedback.version != data.version:
+        fail(409, "Review the current published feedback before acknowledging")
+    if feedback.acknowledged_version != data.version:
+        result = db.execute(
+            update(Feedback)
+            .where(
+                Feedback.id == feedback.id,
+                Feedback.version == data.version,
+                Feedback.state == "published",
+            )
+            .values(acknowledged_at=now(), acknowledged_version=data.version)
+        )
+        if result.rowcount != 1:
+            fail(409, "Feedback changed. Review it again")
+        db.expire(feedback)
+        audit(db, actor, "feedback.acknowledged", feedback.id)
+        notify(
+            db,
+            feedback.author_id,
+            "feedback.acknowledged",
+            "An employee acknowledged your feedback",
+            feedback.id,
+        )
+    return feedback_payload(db, actor, feedback)
