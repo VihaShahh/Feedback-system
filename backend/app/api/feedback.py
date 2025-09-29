@@ -162,3 +162,19 @@ def acknowledge_feedback(
             feedback.id,
         )
     return feedback_payload(db, actor, feedback)
+
+
+@router.get("/{feedback_id}/revisions")
+def revisions(feedback_id: str, actor: User = Depends(current_user), db: Session = Depends(get_db)):
+    feedback = find_feedback(db, actor, feedback_id)
+    records = db.scalars(
+        select(Revision)
+        .where(Revision.feedback_id == feedback.id)
+        .order_by(Revision.version.desc())
+    ).all()
+    return {
+        "items": [
+            {column.name: getattr(record, column.name) for column in Revision.__table__.columns}
+            for record in records
+        ]
+    }
