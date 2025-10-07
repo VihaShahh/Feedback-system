@@ -1,7 +1,8 @@
 from sqlalchemy import and_, or_, select, update
 
 from .errors import fail
-from .models import AuditEvent, Feedback, Notification, Revision, User
+from .events import audit  # noqa: F401
+from .models import Feedback, Notification, Revision, User
 from .models.common import now
 from .policy import Permission, Role, can_write_feedback, has_permission, manages
 
@@ -63,14 +64,6 @@ def revision(db, feedback, actor):
             strengths=feedback.strengths,
             improvements=feedback.improvements,
             sentiment=feedback.sentiment,
-        )
-    )
-
-
-def audit(db, actor, action, resource_id):
-    db.add(
-        AuditEvent(
-            actor_id=actor.id, action=action, resource_type="feedback", resource_id=resource_id
         )
     )
 
