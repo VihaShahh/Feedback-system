@@ -6,5 +6,6 @@ from .feedback import router as feedback
 from .goals import router as goals
 from .health import router as health
 from .people import router as people
+from .requests import router as requests
 
-routers = [health, auth, people, feedback, activity, cycles, goals, checkins]
+routers = [health, auth, people, feedback, activity, cycles, goals, checkins, requests]
