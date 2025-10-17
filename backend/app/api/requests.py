@@ -79,3 +79,56 @@ def create_request(
     audit(db, actor, "request.created", row.id, "request")
     notify(db, manager.id, "feedback.requested", "A direct report requested your feedback", row.id)
     return payload(db, row)
+
+
+@router.post("/{request_id}/fulfil")
+def fulfil(
+    request_id: str,
+    data: FulfilInput,
+    actor: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    row = db.get(FeedbackRequest, request_id)
+    target = db.get(User, row.employee_id) if row else None
+    if not row or not manages(actor, target):
+        fail(404, "Feedback request not found")
+    feedback = find_feedback(db, actor, data.feedback_id)
+    if (
+        feedback.employee_id != row.employee_id
+        or feedback.state != "published"
+        or feedback.author_id != actor.id
+    ):
+        fail(422, "Choose your published feedback for this employee")
+    result = db.execute(
+        update(FeedbackRequest)
+        .where(FeedbackRequest.id == row.id, FeedbackRequest.state == "open")
+        .values(state="fulfilled", feedback_id=feedback.id, manager_id=actor.id)
+    )
+    if result.rowcount != 1:
+        fail(409, "This request is already closed")
+    db.expire(row)
+    audit(db, actor, "request.fulfilled", row.id, "request")
+    notify(
+        db, row.employee_id, "request.fulfilled", "Your requested feedback is ready", feedback.id
+    )
+    return payload(db, row)
+
+
+@router.post("/{request_id}/cancel", status_code=204)
+def cancel(
+    request_id: str,
+    actor: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    result = db.execute(
+        update(FeedbackRequest)
+        .where(
+            FeedbackRequest.id == request_id,
+            FeedbackRequest.employee_id == actor.id,
+            FeedbackRequest.state == "open",
+        )
+        .values(state="cancelled")
+    )
+    if result.rowcount != 1:
+        fail(404, "Open feedback request not found")
+    audit(db, actor, "request.cancelled", request_id, "request")
