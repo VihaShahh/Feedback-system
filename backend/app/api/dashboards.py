@@ -103,3 +103,52 @@ def team(actor: User = Depends(current_user), db: Session = Depends(get_db)):
         "team": cards,
         "recent_feedback": [feedback_payload(db, actor, row) for row in recent],
     }
+
+
+def organization_population():
+    return select(User).where(User.active, User.role.in_([Role.EMPLOYEE, Role.MANAGER]))
+
+
+def protected_summary(db, query, population, minimum):
+    stats = summarize(db, query)
+    suppressed = population < minimum or stats["participants"] < minimum
+    return {
+        "suppressed": suppressed,
+        "employee_count": population,
+        "feedback_count": None if suppressed else stats["total"],
+        "participation_percent": None
+        if suppressed
+        else round(stats["participants"] * 100 / population),
+        "sentiment": None if suppressed else sentiment_counts(stats),
+    }
+
+
+@router.get("/organization")
+def organization(
+    request: Request, actor: User = Depends(current_user), db: Session = Depends(get_db)
+):
+    require(actor, Permission.ORGANIZATION_READ)
+    minimum = request.app.state.settings.aggregate_minimum
+    population = organization_population()
+    count = db.scalar(select(func.count()).select_from(population.subquery()))
+    ids = population.with_only_columns(User.id)
+    query = feedback_base().where(Feedback.employee_id.in_(ids))
+    result = protected_summary(db, query, count, minimum)
+    departments = db.execute(
+        select(User.department, func.count())
+        .where(User.active, User.role.in_([Role.EMPLOYEE, Role.MANAGER]))
+        .group_by(User.department)
+        .order_by(User.department)
+    ).all()
+    groups = []
+    for department, total in departments:
+        department_ids = population.where(User.department == department).with_only_columns(User.id)
+        groups.append(
+            {
+                "department": department,
+                **protected_summary(
+                    db, query.where(Feedback.employee_id.in_(department_ids)), total, minimum
+                ),
+            }
+        )
+    return {"kind": "organization", "minimum_cohort": minimum, **result, "departments": groups}
