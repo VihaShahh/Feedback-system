@@ -45,3 +45,61 @@ def personal(actor: User = Depends(current_user), db: Session = Depends(get_db))
         "trend": monthly_trend(db, query),
         "recent_feedback": [feedback_payload(db, actor, row) for row in recent],
     }
+
+
+@router.get("/team")
+def team(actor: User = Depends(current_user), db: Session = Depends(get_db)):
+    if actor.role != Role.MANAGER:
+        fail(403, "This dashboard is for managers")
+    people = db.scalars(
+        select(User).where(User.manager_id == actor.id, User.active).order_by(User.name, User.id)
+    ).all()
+    ids = [person.id for person in people]
+    query = feedback_base().where(Feedback.employee_id.in_(ids))
+    stats = summarize(db, query)
+    active_goals = db.scalar(
+        select(func.count())
+        .select_from(Goal)
+        .where(Goal.employee_id.in_(ids), Goal.state == "active")
+    )
+    open_requests = db.scalar(
+        select(func.count())
+        .select_from(FeedbackRequest)
+        .where(FeedbackRequest.employee_id.in_(ids), FeedbackRequest.state == "open")
+    )
+    cards = []
+    for person in people:
+        individual = summarize(db, query.where(Feedback.employee_id == person.id))
+        latest = db.scalar(
+            query.where(Feedback.employee_id == person.id)
+            .order_by(Feedback.published_at.desc())
+            .limit(1)
+        )
+        cards.append(
+            {
+                "id": person.id,
+                "name": person.name,
+                "title": person.title,
+                "department": person.department,
+                "feedback_count": individual["total"],
+                "pending": individual["total"] - individual["acknowledged"],
+                "latest_sentiment": latest.sentiment if latest else None,
+                "latest_feedback_at": latest.published_at if latest else None,
+            }
+        )
+    recent = db.scalars(query.order_by(Feedback.published_at.desc(), Feedback.id).limit(5)).all()
+    return {
+        "kind": "team",
+        "metrics": {
+            "team_size": len(ids),
+            "feedback_shared": stats["total"],
+            "pending_acknowledgements": stats["total"] - stats["acknowledged"],
+            "active_goals": active_goals,
+            "needs_attention": stats["needs_attention"],
+            "open_requests": open_requests,
+        },
+        "sentiment": sentiment_counts(stats),
+        "trend": monthly_trend(db, query),
+        "team": cards,
+        "recent_feedback": [feedback_payload(db, actor, row) for row in recent],
+    }
