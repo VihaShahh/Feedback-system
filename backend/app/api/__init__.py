@@ -1,3 +1,4 @@
+from .access import router as access
 from .activity import router as activity
 from .auth import router as auth
 from .checkins import router as checkins
@@ -22,4 +23,5 @@ routers = [
     requests,
     dashboards,
     reports,
+    access,
 ]
