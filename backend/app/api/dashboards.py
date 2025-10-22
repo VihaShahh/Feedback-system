@@ -167,3 +167,30 @@ def organization(
         )
     # Individual feedback text and identifiers are never part of an aggregate payload.
     return {"kind": "organization", "minimum_cohort": minimum, **result, "departments": groups}
+
+
+@router.get("/organization/directory-summary")
+def organization_directory(
+    request: Request,
+    actor: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    require(actor, Permission.ORGANIZATION_READ)
+    minimum = request.app.state.settings.aggregate_minimum
+    rows = db.execute(
+        select(User.department, func.count())
+        .where(User.active, User.role.in_([Role.EMPLOYEE, Role.MANAGER]))
+        .group_by(User.department)
+        .order_by(User.department)
+    ).all()
+    return {
+        "minimum_cohort": minimum,
+        "items": [
+            {
+                "department": name,
+                "employee_count": count if count >= minimum else None,
+                "suppressed": count < minimum,
+            }
+            for name, count in rows
+        ],
+    }
