@@ -23,7 +23,7 @@ def get_db(request: Request):
     yield from transaction(request.app.state.sessions)
 
 
-def current_user(request: Request, db: Session = Depends(get_db)) -> User:
+def current_user(request: Request, db: Session = Depends(get_db, scope="function")) -> User:
     token = request.cookies.get(SESSION_COOKIE, "")
     if not token or len(token) > 256:
         fail(401, "Sign in to continue")

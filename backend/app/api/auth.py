@@ -43,7 +43,12 @@ def start_session(request, response, db, user):
 
 
 @router.post("/login")
-def login(data: Login, request: Request, response: Response, db: Session = Depends(get_db)):
+def login(
+    data: Login,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db, scope="function"),
+):
     if request.headers.get("origin") not in request.app.state.settings.allowed_origins:
         fail(403, "Sign in from the workspace")
     check_login(request, db, data.email)
@@ -66,7 +71,7 @@ def logout(
     request: Request,
     response: Response,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     db.delete(request.state.login_session)
     response.delete_cookie(SESSION_COOKIE, path="/")
@@ -78,7 +83,7 @@ def password(
     data: PasswordChange,
     response: Response,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     if not verify_password(data.current_password, actor.password_hash):
         fail(400, "Current password is incorrect")

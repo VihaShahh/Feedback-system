@@ -27,7 +27,7 @@ def export_feedback(
     month: str | None = Query(default=None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$"),
     cycle_id: str | None = None,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     require(actor, Permission.FEEDBACK_EXPORT)
     query = period_filter(visible_feedback(actor).where(Feedback.state != "draft"), month, cycle_id)

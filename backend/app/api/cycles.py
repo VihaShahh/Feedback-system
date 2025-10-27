@@ -33,7 +33,7 @@ class CycleTransition(Input):
 
 
 @router.get("")
-def cycles(actor: User = Depends(current_user), db: Session = Depends(get_db)):
+def cycles(actor: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     rows = db.scalars(select(Cycle).order_by(Cycle.starts_on.desc(), Cycle.id)).all()
     return {
         "items": [
@@ -47,7 +47,7 @@ def cycles(actor: User = Depends(current_user), db: Session = Depends(get_db)):
 def create_cycle(
     data: CycleCreate,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     require(actor, Permission.CYCLES_MANAGE)
     cycle = Cycle(
@@ -64,7 +64,7 @@ def transition_cycle(
     cycle_id: str,
     data: CycleTransition,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     require(actor, Permission.CYCLES_MANAGE)
     if db.bind.dialect.name == "postgresql":

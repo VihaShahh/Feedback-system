@@ -28,7 +28,7 @@ def access(actor: User = Depends(current_user)):
 def sessions(
     request: Request,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     rows = db.scalars(
         select(LoginSession)
@@ -54,7 +54,7 @@ def revoke_session(
     request: Request,
     response: Response,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     row = db.scalar(
         select(LoginSession).where(LoginSession.id == session_id, LoginSession.user_id == actor.id)

@@ -26,7 +26,7 @@ def personal(
     month: str | None = Month,
     cycle_id: str | None = None,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     query = period_filter(feedback_base().where(Feedback.employee_id == actor.id), month, cycle_id)
     stats = summarize(db, query)
@@ -57,7 +57,7 @@ def team(
     month: str | None = Month,
     cycle_id: str | None = None,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     if actor.role != Role.MANAGER:
         fail(403, "This dashboard is for managers")
@@ -139,7 +139,7 @@ def organization(
     month: str | None = Month,
     cycle_id: str | None = None,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     require(actor, Permission.ORGANIZATION_READ)
     minimum = request.app.state.settings.aggregate_minimum
@@ -173,7 +173,7 @@ def organization(
 def organization_directory(
     request: Request,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     require(actor, Permission.ORGANIZATION_READ)
     minimum = request.app.state.settings.aggregate_minimum
