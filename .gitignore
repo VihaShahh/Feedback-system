@@ -81,3 +81,6 @@ DEMO_SHOWCASE.md
 VALIDATION.md
 docs/images/demo-showcase-*
 # END shared local-artifact rules
+
+# TypeScript incremental build state
+*.tsbuildinfo
