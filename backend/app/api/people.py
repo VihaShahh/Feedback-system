@@ -183,3 +183,15 @@ def remove_grant(
             db.delete(grant)
             revoke_sessions(db, user_id)
             audit(db, actor, "grant.removed", user_id, "user")
+
+
+@router.get("/{user_id}")
+def get_person(
+    user_id: str,
+    actor: User = Depends(current_user),
+    db: Session = Depends(get_db, scope="function"),
+):
+    person = db.scalar(visible_people(actor).where(User.id == user_id))
+    if not person:
+        fail(404, "Employee not found")
+    return public_user(person)
