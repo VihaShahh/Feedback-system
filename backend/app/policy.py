@@ -10,7 +10,6 @@ class Role(StrEnum):
 
 class Permission(StrEnum):
     PEOPLE_MANAGE = "people.manage"
-    GRANTS_MANAGE = "grants.manage"
     CYCLES_MANAGE = "cycles.manage"
     AUDIT_READ = "audit.read"
     ORGANIZATION_READ = "dashboard.organization"
@@ -25,7 +24,6 @@ DEFAULT_PERMISSIONS = {
     Role.ADMIN: frozenset(
         {
             Permission.PEOPLE_MANAGE,
-            Permission.GRANTS_MANAGE,
             Permission.CYCLES_MANAGE,
             Permission.AUDIT_READ,
         }
