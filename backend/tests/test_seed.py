@@ -13,7 +13,9 @@ def test_demo_seed_is_synthetic_repeatable_and_has_workflow_data(empty_db):
     second = seed_demo(empty_db, "Ignored replacement password 43", settings)
     assert first["created"] and not second["created"] and second["users"] == 10
     assert empty_db.scalar(select(func.count()).select_from(Feedback)) == 19
-    assert all(user.email.endswith("@gather.example.com") for user in empty_db.scalars(select(User)))
+    assert all(
+        user.email.endswith("@gather.example.com") for user in empty_db.scalars(select(User))
+    )
 
 
 def test_production_demo_seed_is_rejected_before_mutation(empty_db):
