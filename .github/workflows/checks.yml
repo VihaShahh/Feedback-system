@@ -1,0 +1,46 @@
+name: Workspace checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: odoo
+          POSTGRES_PASSWORD: feedback-test-password
+          POSTGRES_DB: feedback_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U odoo -d feedback_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: python -m venv .venv
+      - run: .venv/bin/pip install -r requirements.lock
+      - run: .venv/bin/pip install -e . --no-deps
+      - run: .venv/bin/ruff check backend scripts
+      - run: .venv/bin/pytest --cov=backend/app --cov-fail-under=80
+      - run: .venv/bin/python scripts/check-postgres.py
+        env:
+          FEEDBACK_DATABASE_URL: postgresql+psycopg://odoo:feedback-test-password@127.0.0.1:5432/feedback_test
+      - run: .venv/bin/pip-audit --local --skip-editable
+      - run: npm --prefix frontend ci
+      - run: npm --prefix frontend run format:check
+      - run: npm --prefix frontend test
+      - run: npm --prefix frontend run build
+      - run: npm --prefix frontend audit
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npm run test:browser
+        working-directory: frontend
