@@ -1,0 +1,15 @@
+# Identity, privileges and privacy
+
+Authorization uses current database state on each request. A session identifies an account; it does not carry an authoritative role or reporting relationship. Disabled accounts and revoked sessions fail authentication. Successful login returns only a safe account projection and presentation capabilities.
+
+All roles can read their own published and archived feedback. A manager can read published feedback for current active direct reports. Writing additionally requires authorship. A manager transfer removes the former manager’s team access and does not transfer private drafts to the new manager. Drafts remain inaccessible to recipients, organization readers, senior management and administrators.
+
+Senior management has organization summary access by default. Explicit escalation shares one published feedback record, its revisions and conversation with senior management. Administrative identity management does not imply organization summary or feedback content access. Only administrators can manage explicit grants or assign privileged roles. Delegated people management permits employee account changes while retaining administrative role protections.
+
+The privileges `people.manage`, `cycles.manage`, `audit.read`, `dashboard.organization`, `feedback.read_organization` and `feedback.export` have independent meanings. Export authorization does not widen record visibility. Organization reading excludes all drafts. A grant change revokes the affected account’s sessions. The last active administrator cannot be disabled or demoted, and active direct reports must be reassigned before a manager is disabled or demoted.
+
+Opaque random session and CSRF tokens are persisted as SHA-256 hashes. Session cookies are HttpOnly and SameSite Lax; production requires secure cookies and explicit HTTPS origins. Authenticated mutations require both a trusted Origin and the session-bound CSRF token. Passwords use salted PBKDF2-SHA256 with bounded validation; password input preserves intentional spaces. Password changes revoke every session. Failed login counters persist independently of the rejected authentication transaction and enforce both account and source limits.
+
+Organization sentiment and participation values require both a sufficient population and at least three distinct feedback recipients in the selected view. Department summaries apply the same threshold independently. Aggregate payloads contain no feedback narratives or employee identifiers. This is cohort suppression, not differential privacy: repeated overlapping views and outside knowledge can still enable inference. The threshold is a product privacy boundary rather than a guarantee of anonymity.
+
+Audit events contain actor and resource identifiers, action names and timestamps. They exclude feedback narratives, check-in notes, passwords, tokens and arbitrary request metadata. Notifications use fixed messages and enforce ownership on reads and updates. CSV cells that could be interpreted as spreadsheet formulas are escaped.
