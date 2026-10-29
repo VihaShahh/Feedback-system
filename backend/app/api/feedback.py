@@ -103,3 +103,26 @@ def edit_feedback(
         )
     audit(db, actor, "feedback.edited", feedback.id)
     return feedback_payload(db, actor, feedback)
+
+
+@router.post("/{feedback_id}/publish")
+def publish_feedback(
+    feedback_id: str,
+    data: VersionInput,
+    actor: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    feedback = writable_feedback(db, actor, feedback_id)
+    if feedback.state != "draft":
+        fail(409, "Only a draft can be published")
+    change_feedback(db, feedback, data.version, state="published", published_at=now())
+    revision(db, feedback, actor)
+    notify(
+        db,
+        feedback.employee_id,
+        "feedback.published",
+        "You have new feedback to review",
+        feedback.id,
+    )
+    audit(db, actor, "feedback.published", feedback.id)
+    return feedback_payload(db, actor, feedback)
