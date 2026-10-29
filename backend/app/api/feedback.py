@@ -196,3 +196,50 @@ def archive_feedback(
     )
     audit(db, actor, "feedback.archived", feedback.id)
     return feedback_payload(db, actor, feedback)
+
+
+@router.get("/{feedback_id}/comments")
+def comments(feedback_id: str, actor: User = Depends(current_user), db: Session = Depends(get_db)):
+    feedback = find_feedback(db, actor, feedback_id)
+    if feedback.state == "draft":
+        return {"items": []}
+    records = db.scalars(
+        select(Comment)
+        .where(Comment.feedback_id == feedback.id)
+        .order_by(Comment.created_at, Comment.id)
+    ).all()
+    return {
+        "items": [
+            {
+                "id": row.id,
+                "author_id": row.author_id,
+                "author_name": db.get(User, row.author_id).name,
+                "body": row.body,
+                "created_at": row.created_at,
+            }
+            for row in records
+        ]
+    }
+
+
+@router.post("/{feedback_id}/comments", status_code=201)
+def add_comment(
+    feedback_id: str,
+    data: CommentInput,
+    actor: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    feedback = find_feedback(db, actor, feedback_id)
+    if feedback.state != "published":
+        fail(409, "Comments are available on published feedback")
+    row = Comment(feedback_id=feedback.id, author_id=actor.id, body=data.body)
+    db.add(row)
+    db.flush()
+    audit(db, actor, "feedback.commented", feedback.id)
+    return {
+        "id": row.id,
+        "body": row.body,
+        "author_id": actor.id,
+        "author_name": actor.name,
+        "created_at": row.created_at,
+    }
