@@ -10,6 +10,7 @@ import { Acknowledge } from "../features/Acknowledge";
 import { RevisionHistory } from "../features/RevisionHistory";
 import { Conversation } from "../features/Conversation";
 import { FeedbackActions } from "../features/FeedbackActions";
+import { Escalation } from "../features/Escalation";
 export default function FeedbackDetail() {
   const { id } = useParams();
   const query = useQuery<Feedback>("/feedback/" + id);
@@ -79,7 +80,7 @@ export default function FeedbackDetail() {
           )}
         </div>
       </article>
-
+      <Escalation feedback={row} reload={query.reload} />
       {history && <RevisionHistory id={row.id} />}
       <Conversation id={row.id} writable={row.capabilities.comment} />
     </div>
