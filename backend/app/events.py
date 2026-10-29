@@ -1,4 +1,4 @@
-from .models import AuditEvent
+from .models import AuditEvent, Notification
 
 
 def audit(db, actor, action: str, resource_id: str, resource_type: str = "feedback"):
@@ -11,3 +11,7 @@ def audit(db, actor, action: str, resource_id: str, resource_type: str = "feedba
             resource_id=resource_id,
         )
     )
+
+
+def notify(db, user_id: str, kind: str, message: str, resource_id: str | None = None):
+    db.add(Notification(user_id=user_id, kind=kind, message=message, resource_id=resource_id))
