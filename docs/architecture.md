@@ -1,0 +1,19 @@
+# Application architecture and failure semantics
+
+Gather is a React and TypeScript workspace backed by FastAPI and SQLAlchemy. Alembic owns schema changes. The application factory owns its engine and session maker; creating or importing the application does not create tables or contact a MongoDB service. SQLite supports local operation and tests. PostgreSQL uses the same mapped models and versioned migrations.
+
+The API is rooted at `/api/v1`. Authentication, account administration, feedback, review cycles, goals, check-ins, feedback requests, notifications, audit records, dashboards and reports have separate routers. Shared policies and scoped queries determine record visibility before filters, pagination and aggregation. Browser capabilities drive navigation and controls while server checks remain authoritative.
+
+Each request uses a database transaction. Dependencies finish the transaction before sending the response, so commit failures cannot be reported as successful writes. Feedback publication, revision snapshots, audit metadata and recipient notifications commit together. A failure in any of these operations rolls the whole mutation back. Foreign keys, unique account emails, revision versions, employee-week check-in uniqueness and the partial index for one open feedback request enforce invariants below the API.
+
+Feedback moves from private draft to published to archived. Content edits and lifecycle changes compare an expected version in an atomic SQL update. A stale version returns 409 without overwriting current state. Published content edits append a revision and clear acknowledgement. Acknowledgement is recipient-only and idempotent for the current version. Archiving never turns an unpublished draft into a visible record. Escalation and resolution use conditional updates and retain the same content version. Published revisions have no update or delete API.
+
+Goals use optimistic versions and bounded progress. Completing a goal sets progress to 100; reopening requires an explicit active state and lower progress. Cancelled goals remain read-only. Check-ins are owner-authored, weekly and private to the owner and current manager. Manager responses are conditional one-time writes. Feedback requests follow the current reporting relationship and can be fulfilled only with the acting manager’s published feedback for that employee.
+
+Review cycles move from draft to open to closed. Open periods cannot overlap. PostgreSQL uses a transaction advisory lock when transitioning cycles, preventing concurrent overlapping openings. Publication requires the cycle to be open and today to fall within its dates. Closing a cycle preserves history and prevents pending drafts from being published in it.
+
+The client uses credentialed requests and a session-bound CSRF header, aborts stale reads and displays structured errors with request references. A 401 clears the client session. A version conflict preserves local editor text and requires an explicit decision after reviewing the newer server version. Route screens load separately; charts use native CSS and accessible textual values.
+
+Local and CI browser servers use a disposable migrated database and explicit synthetic accounts. The demo initializer refuses production and non-empty, unrelated databases. The administrative bootstrap creates only the first administrator. Live MongoDB data is not automatically imported; an actual existing dataset requires a separately reviewed mapping, reconciliation and cutover.
+
+Backup and recovery depend on the selected database. SQLite backup must include a consistent database snapshot, including any active journal state. PostgreSQL recovery must restore schema and data together and run schema-parity checks before accepting traffic. Session revocation and secure-origin configuration are required after a security-driven recovery. No hosted recovery or production-load certification is implied by the local checks.
