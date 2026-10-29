@@ -46,12 +46,17 @@ class GrantInput(Input):
 @router.get("")
 def people(
     q: str = Query(default="", max_length=120),
+    team_only: bool = False,
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=25, ge=1, le=100),
     actor: User = Depends(current_user),
     db: Session = Depends(get_db, scope="function"),
 ):
     query = visible_people(actor)
+    if team_only:
+        if actor.role != Role.MANAGER:
+            fail(403, "This view is for managers")
+        query = query.where(User.manager_id == actor.id, User.active)
     if q:
         query = query.where(User.name.icontains(q, autoescape=True))
     total = db.scalar(select(func.count()).select_from(query.subquery()))
