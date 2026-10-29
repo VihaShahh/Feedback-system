@@ -243,3 +243,66 @@ def add_comment(
         "author_name": actor.name,
         "created_at": row.created_at,
     }
+
+
+@router.post("/{feedback_id}/escalate")
+def escalate_feedback(
+    feedback_id: str,
+    data: EscalationInput,
+    actor: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    feedback = find_feedback(db, actor, feedback_id)
+    target = db.get(User, feedback.employee_id)
+    if actor.id != target.id and not manages(actor, target):
+        fail(403, "Only the recipient or current manager can escalate")
+    if feedback.state != "published" or feedback.version != data.version or feedback.escalated:
+        fail(409, "Only current, un-escalated published feedback can be escalated")
+    result = db.execute(
+        update(Feedback)
+        .where(
+            Feedback.id == feedback.id,
+            Feedback.version == data.version,
+            Feedback.state == "published",
+            Feedback.escalated.is_(False),
+        )
+        .values(escalated=True, escalation_note=data.note)
+    )
+    if result.rowcount != 1:
+        fail(409, "Feedback changed. Reload before escalating")
+    db.expire(feedback)
+    audit(db, actor, "feedback.escalated", feedback.id)
+    return feedback_payload(db, actor, feedback)
+
+
+@router.post("/{feedback_id}/resolve")
+def resolve_escalation(
+    feedback_id: str,
+    data: ResolutionInput,
+    actor: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    feedback = find_feedback(db, actor, feedback_id)
+    if actor.role != Role.SENIOR:
+        fail(403, "Senior management reviews escalations")
+    if not feedback.escalated or feedback.resolved_at:
+        fail(409, "This feedback has no open escalation")
+    result = db.execute(
+        update(Feedback)
+        .where(
+            Feedback.id == feedback.id, Feedback.resolved_at.is_(None), Feedback.escalated.is_(True)
+        )
+        .values(resolution_note=data.note, resolved_at=now())
+    )
+    if result.rowcount != 1:
+        fail(409, "This escalation was already resolved")
+    db.expire(feedback)
+    audit(db, actor, "feedback.resolved", feedback.id)
+    notify(
+        db,
+        feedback.employee_id,
+        "feedback.resolved",
+        "Senior management reviewed your escalation",
+        feedback.id,
+    )
+    return feedback_payload(db, actor, feedback)
