@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 
 from ..dependencies import current_user, get_db, public_user, require
 from ..errors import fail
-from ..models import AuditEvent, Grant, User
+from ..events import audit
+from ..models import Grant, User
 from ..passwords import hash_password, validate_password
 from ..people import revoke_sessions, validate_manager, visible_people
 from ..policy import Permission, Role
@@ -65,7 +66,9 @@ def people(
 
 @router.post("", status_code=201)
 def create_person(
-    data: PersonCreate, actor: User = Depends(current_user), db: Session = Depends(get_db)
+    data: PersonCreate,
+    actor: User = Depends(current_user),
+    db: Session = Depends(get_db),
 ):
     require(actor, Permission.PEOPLE_MANAGE)
     if actor.role != Role.ADMIN and data.role != Role.EMPLOYEE:
@@ -81,11 +84,7 @@ def create_person(
     )
     db.add(user)
     db.flush()
-    db.add(
-        AuditEvent(
-            actor_id=actor.id, action="person.created", resource_type="user", resource_id=user.id
-        )
-    )
+    audit(db, actor, "person.created", user.id, "user")
     return public_user(user)
 
 
@@ -126,16 +125,16 @@ def update_person(
         setattr(target, key, value)
     if {"role", "active", "manager_id"} & updates.keys():
         revoke_sessions(db, target.id)
-    db.add(
-        AuditEvent(
-            actor_id=actor.id, action="person.updated", resource_type="user", resource_id=target.id
-        )
-    )
+    audit(db, actor, "person.updated", target.id, "user")
     return public_user(target)
 
 
 @router.get("/{user_id}/grants")
-def grants(user_id: str, actor: User = Depends(current_user), db: Session = Depends(get_db)):
+def grants(
+    user_id: str,
+    actor: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
     if actor.role != Role.ADMIN:
         fail(403, "Only administrators manage grants")
     target = db.get(User, user_id)
@@ -159,11 +158,7 @@ def add_grant(
     if not any(g.permission == data.permission for g in target.grants):
         db.add(Grant(user_id=user_id, permission=data.permission))
         revoke_sessions(db, user_id)
-        db.add(
-            AuditEvent(
-                actor_id=actor.id, action="grant.added", resource_type="user", resource_id=user_id
-            )
-        )
+        audit(db, actor, "grant.added", user_id, "user")
 
 
 @router.delete("/{user_id}/grants/{permission}", status_code=204)
@@ -182,11 +177,4 @@ def remove_grant(
         if grant.permission == permission:
             db.delete(grant)
             revoke_sessions(db, user_id)
-            db.add(
-                AuditEvent(
-                    actor_id=actor.id,
-                    action="grant.removed",
-                    resource_type="user",
-                    resource_id=user_id,
-                )
-            )
+            audit(db, actor, "grant.removed", user_id, "user")
