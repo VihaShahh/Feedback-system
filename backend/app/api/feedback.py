@@ -53,12 +53,26 @@ def create_feedback(
 
 @router.get("")
 def list_feedback(
+    state: FeedbackState | None = None,
+    sentiment: Sentiment | None = None,
+    employee_id: str | None = None,
+    cycle_id: str | None = None,
+    escalated: bool | None = None,
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=25, ge=1, le=100),
     actor: User = Depends(current_user),
     db: Session = Depends(get_db),
 ):
-    query = visible_feedback(actor).where(Feedback.state != "archived")
+    query = visible_feedback(actor)
+    query = query.where(Feedback.state == state if state else Feedback.state != "archived")
+    for column, value in (
+        (Feedback.sentiment, sentiment),
+        (Feedback.employee_id, employee_id),
+        (Feedback.cycle_id, cycle_id),
+        (Feedback.escalated, escalated),
+    ):
+        if value is not None:
+            query = query.where(column == value)
     total = db.scalar(select(func.count()).select_from(query.subquery()))
     records = db.scalars(
         query.order_by(Feedback.updated_at.desc(), Feedback.id).offset(offset).limit(limit)
