@@ -9,6 +9,7 @@ import { PageHeading, Badge, dateLabel } from "../components/Primitives";
 import { Input, Textarea } from "../components/Fields";
 import { Empty, Loading, Success } from "../components/States";
 import { ErrorPanel } from "../components/ErrorPanel";
+import { FulfilRequest } from "../features/FulfilRequest";
 export default function Requests() {
   const { session } = useSession();
   const [offset, setOffset] = useState(0);
@@ -80,6 +81,7 @@ export default function Requests() {
                       >
                         Write feedback for {row.employee_name.split(" ")[0]}
                       </Link>
+                      <FulfilRequest request={row} saved={query.reload} />
                     </>
                   )}
               </article>
