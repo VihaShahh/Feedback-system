@@ -22,8 +22,13 @@ def sentiment_counts(stats):
 
 
 @router.get("/personal")
-def personal(actor: User = Depends(current_user), db: Session = Depends(get_db)):
-    query = feedback_base().where(Feedback.employee_id == actor.id)
+def personal(
+    month: str | None = Month,
+    cycle_id: str | None = None,
+    actor: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    query = period_filter(feedback_base().where(Feedback.employee_id == actor.id), month, cycle_id)
     stats = summarize(db, query)
     goals = db.scalar(
         select(func.count())
@@ -48,14 +53,19 @@ def personal(actor: User = Depends(current_user), db: Session = Depends(get_db))
 
 
 @router.get("/team")
-def team(actor: User = Depends(current_user), db: Session = Depends(get_db)):
+def team(
+    month: str | None = Month,
+    cycle_id: str | None = None,
+    actor: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
     if actor.role != Role.MANAGER:
         fail(403, "This dashboard is for managers")
     people = db.scalars(
         select(User).where(User.manager_id == actor.id, User.active).order_by(User.name, User.id)
     ).all()
     ids = [person.id for person in people]
-    query = feedback_base().where(Feedback.employee_id.in_(ids))
+    query = period_filter(feedback_base().where(Feedback.employee_id.in_(ids)), month, cycle_id)
     stats = summarize(db, query)
     active_goals = db.scalar(
         select(func.count())
@@ -125,14 +135,18 @@ def protected_summary(db, query, population, minimum):
 
 @router.get("/organization")
 def organization(
-    request: Request, actor: User = Depends(current_user), db: Session = Depends(get_db)
+    request: Request,
+    month: str | None = Month,
+    cycle_id: str | None = None,
+    actor: User = Depends(current_user),
+    db: Session = Depends(get_db),
 ):
     require(actor, Permission.ORGANIZATION_READ)
     minimum = request.app.state.settings.aggregate_minimum
     population = organization_population()
     count = db.scalar(select(func.count()).select_from(population.subquery()))
     ids = population.with_only_columns(User.id)
-    query = feedback_base().where(Feedback.employee_id.in_(ids))
+    query = period_filter(feedback_base().where(Feedback.employee_id.in_(ids)), month, cycle_id)
     result = protected_summary(db, query, count, minimum)
     departments = db.execute(
         select(User.department, func.count())
@@ -151,4 +165,5 @@ def organization(
                 ),
             }
         )
+    # Individual feedback text and identifiers are never part of an aggregate payload.
     return {"kind": "organization", "minimum_cohort": minimum, **result, "departments": groups}
