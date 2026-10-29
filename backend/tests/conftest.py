@@ -3,6 +3,7 @@ from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 
+from backend.app.database import make_engine, session_factory
 from backend.app.factory import create_app
 from backend.app.models import User
 from backend.app.passwords import hash_password
@@ -96,3 +97,15 @@ def make_feedback(sign_in):
         return record
 
     return create
+
+
+@pytest.fixture
+def empty_db(tmp_path):
+    url = f"sqlite:///{tmp_path / 'empty.db'}"
+    config = Config("alembic.ini")
+    config.attributes["database_url"] = url
+    command.upgrade(config, "head")
+    engine = make_engine(url)
+    with session_factory(engine).begin() as db:
+        yield db
+    engine.dispose()
