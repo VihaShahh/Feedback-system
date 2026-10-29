@@ -9,6 +9,7 @@ import { ErrorPanel } from "../components/ErrorPanel";
 import { Acknowledge } from "../features/Acknowledge";
 import { RevisionHistory } from "../features/RevisionHistory";
 import { Conversation } from "../features/Conversation";
+import { FeedbackActions } from "../features/FeedbackActions";
 export default function FeedbackDetail() {
   const { id } = useParams();
   const query = useQuery<Feedback>("/feedback/" + id);
@@ -39,6 +40,7 @@ export default function FeedbackDetail() {
                 Edit
               </Link>
             )}
+            <FeedbackActions feedback={row} reload={query.reload} />
           </>
         }
       />
