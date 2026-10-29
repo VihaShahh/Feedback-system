@@ -178,3 +178,21 @@ def revisions(feedback_id: str, actor: User = Depends(current_user), db: Session
             for record in records
         ]
     }
+
+
+@router.post("/{feedback_id}/archive")
+def archive_feedback(
+    feedback_id: str,
+    data: VersionInput,
+    actor: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    feedback = writable_feedback(db, actor, feedback_id)
+    if feedback.state != "published":
+        fail(409, "Only published feedback can be archived")
+    acknowledgement = data.version + 1 if feedback.acknowledged_version == data.version else None
+    change_feedback(
+        db, feedback, data.version, state="archived", acknowledged_version=acknowledgement
+    )
+    audit(db, actor, "feedback.archived", feedback.id)
+    return feedback_payload(db, actor, feedback)
