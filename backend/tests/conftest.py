@@ -69,3 +69,30 @@ def sign_in(client):
         return client
 
     return login
+
+
+@pytest.fixture
+def make_feedback(sign_in):
+    def create(employee="employee", publish=True, sentiment="positive", **extra):
+        client = sign_in("other" if employee == "outsider" else "manager")
+        response = client.post(
+            "/api/v1/feedback",
+            json={
+                "employee_id": employee,
+                "strengths": "Clear technical ownership and thoughtful collaboration",
+                "improvements": "Share progress earlier with the wider team",
+                "sentiment": sentiment,
+                **extra,
+            },
+        )
+        assert response.status_code == 201, response.text
+        record = response.json()
+        if publish:
+            response = client.post(
+                f"/api/v1/feedback/{record['id']}/publish", json={"version": record["version"]}
+            )
+            assert response.status_code == 200, response.text
+            record = response.json()
+        return record
+
+    return create
