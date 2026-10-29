@@ -1,8 +1,10 @@
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, field_validator
 
 from .passwords import validate_password
+
+Password = Annotated[str, StringConstraints(strip_whitespace=False)]
 
 Text = Annotated[str, Field(min_length=1, max_length=4000)]
 Name = Annotated[str, Field(min_length=1, max_length=120)]
@@ -14,7 +16,7 @@ class Input(BaseModel):
 
 class Login(Input):
     email: EmailStr
-    password: str = Field(min_length=1, max_length=128)
+    password: Password = Field(min_length=1, max_length=128)
 
     @field_validator("email")
     @classmethod
@@ -23,8 +25,8 @@ class Login(Input):
 
 
 class PasswordChange(Input):
-    current_password: str = Field(min_length=1, max_length=128)
-    new_password: str
+    current_password: Password = Field(min_length=1, max_length=128)
+    new_password: Password
 
     @field_validator("new_password")
     @classmethod

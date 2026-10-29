@@ -10,7 +10,7 @@ from ..models import Grant, User
 from ..passwords import hash_password, validate_password
 from ..people import revoke_sessions, validate_manager, visible_people
 from ..policy import Permission, Role
-from ..schemas import Input, Name
+from ..schemas import Input, Name, Password
 
 router = APIRouter(prefix="/people", tags=["People"])
 
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/people", tags=["People"])
 class PersonCreate(Input):
     name: Name
     email: EmailStr
-    password: str
+    password: Password
     role: Role = Role.EMPLOYEE
     department: str = Field(default="General", min_length=1, max_length=80)
     title: str = Field(default="", max_length=120)
