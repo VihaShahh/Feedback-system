@@ -86,8 +86,8 @@ def edit_feedback(
     db: Session = Depends(get_db),
 ):
     feedback = writable_feedback(db, actor, feedback_id)
-    if feedback.state != "draft":
-        fail(409, "Only drafts can be edited")
+    if feedback.state == "archived":
+        fail(409, "Archived feedback is read-only")
     values = data.model_dump(exclude={"version"})
     change_feedback(
         db, feedback, data.version, **values, acknowledged_at=None, acknowledged_version=None
