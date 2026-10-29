@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
+from ..cycles import require_open_cycle
 from ..dependencies import current_user, get_db
 from ..errors import fail
 from ..feedback import (
@@ -33,7 +34,9 @@ router = APIRouter(prefix="/feedback", tags=["Feedback"])
 
 @router.post("", status_code=201)
 def create_feedback(
-    data: FeedbackCreate, actor: User = Depends(current_user), db: Session = Depends(get_db)
+    data: FeedbackCreate,
+    actor: User = Depends(current_user),
+    db: Session = Depends(get_db),
 ):
     target = db.get(User, data.employee_id)
     if not target or not manages(actor, target) or target.id == actor.id:
@@ -44,6 +47,7 @@ def create_feedback(
         cycle = db.get(Cycle, data.cycle_id)
         if not cycle or cycle.state != "open":
             fail(422, "Choose an open review cycle")
+    require_open_cycle(db, data.cycle_id)
     feedback = Feedback(**data.model_dump(), author_id=actor.id)
     db.add(feedback)
     db.flush()
@@ -87,7 +91,9 @@ def list_feedback(
 
 @router.get("/{feedback_id}")
 def get_feedback(
-    feedback_id: str, actor: User = Depends(current_user), db: Session = Depends(get_db)
+    feedback_id: str,
+    actor: User = Depends(current_user),
+    db: Session = Depends(get_db),
 ):
     return feedback_payload(db, actor, find_feedback(db, actor, feedback_id))
 
@@ -129,6 +135,7 @@ def publish_feedback(
     feedback = writable_feedback(db, actor, feedback_id)
     if feedback.state != "draft":
         fail(409, "Only a draft can be published")
+    require_open_cycle(db, feedback.cycle_id)
     change_feedback(db, feedback, data.version, state="published", published_at=now())
     revision(db, feedback, actor)
     notify(
@@ -179,7 +186,11 @@ def acknowledge_feedback(
 
 
 @router.get("/{feedback_id}/revisions")
-def revisions(feedback_id: str, actor: User = Depends(current_user), db: Session = Depends(get_db)):
+def revisions(
+    feedback_id: str,
+    actor: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
     feedback = find_feedback(db, actor, feedback_id)
     records = db.scalars(
         select(Revision)
@@ -213,7 +224,11 @@ def archive_feedback(
 
 
 @router.get("/{feedback_id}/comments")
-def comments(feedback_id: str, actor: User = Depends(current_user), db: Session = Depends(get_db)):
+def comments(
+    feedback_id: str,
+    actor: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
     feedback = find_feedback(db, actor, feedback_id)
     if feedback.state == "draft":
         return {"items": []}
