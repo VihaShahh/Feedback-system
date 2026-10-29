@@ -72,3 +72,39 @@ def create_goal(
     if target.id != actor.id:
         notify(db, target.id, "goal.assigned", "Your manager shared a new development goal", row.id)
     return goal_payload(row)
+
+
+@router.patch("/{goal_id}")
+def update_goal(
+    goal_id: str,
+    data: GoalUpdate,
+    actor: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    row = db.get(Goal, goal_id)
+    if not row:
+        fail(404, "Goal not found")
+    employee_record(db, actor, row.employee_id)
+    if row.state == "cancelled":
+        fail(409, "Cancelled goals are read-only")
+    values = data.model_dump(exclude={"version"}, exclude_unset=True)
+    if any(v is None for k, v in values.items() if k != "due_on"):
+        fail(422, "Only the due date may be cleared")
+    if "due_on" in values and values["due_on"]:
+        values["due_on"] = values["due_on"].isoformat()
+    progress = values.get("progress", row.progress)
+    state = values.get("state", row.state)
+    if state == "completed":
+        values["progress"] = 100
+    elif state == "active" and progress == 100:
+        values["state"] = "completed"
+    result = db.execute(
+        update(Goal)
+        .where(Goal.id == row.id, Goal.version == data.version)
+        .values(**values, version=data.version + 1)
+    )
+    if result.rowcount != 1:
+        fail(409, "Goal changed. Reload before saving")
+    db.expire(row)
+    audit(db, actor, "goal.updated", row.id, "goal")
+    return goal_payload(row)
