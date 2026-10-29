@@ -20,6 +20,7 @@ import { useSession } from "../session";
 import { navigation } from "../navigation";
 import { Avatar } from "./Primitives";
 import { SignOutButton } from "./SignOutButton";
+import { MobileNav } from "./MobileNav";
 const icons = {
   overview: LayoutDashboard,
   feedback: MessageSquare,
@@ -129,23 +130,13 @@ export function Shell() {
         </footer>
       </div>
       {mobile && (
-        <div
-          role="dialog"
-          aria-label="Workspace navigation"
-          style={{
-            position: "fixed",
-            inset: 16,
-            zIndex: 50,
-            background: "white",
-            padding: 24,
-            overflow: "auto",
-          }}
-        >
+        <MobileNav close={() => setMobile(false)}>
           {links}
-          <button className="button" onClick={() => setMobile(false)}>
-            Close navigation
-          </button>
-        </div>
+          <Link to="/settings" className="nav-link">
+            Settings
+          </Link>
+          <SignOutButton />
+        </MobileNav>
       )}
     </div>
   );
