@@ -36,7 +36,7 @@ router = APIRouter(prefix="/feedback", tags=["Feedback"])
 def create_feedback(
     data: FeedbackCreate,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     target = db.get(User, data.employee_id)
     if not target or not manages(actor, target) or target.id == actor.id:
@@ -65,7 +65,7 @@ def list_feedback(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=25, ge=1, le=100),
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     query = visible_feedback(actor)
     query = query.where(Feedback.state == state if state else Feedback.state != "archived")
@@ -93,7 +93,7 @@ def list_feedback(
 def get_feedback(
     feedback_id: str,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     return feedback_payload(db, actor, find_feedback(db, actor, feedback_id))
 
@@ -103,7 +103,7 @@ def edit_feedback(
     feedback_id: str,
     data: FeedbackEdit,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     feedback = writable_feedback(db, actor, feedback_id)
     if feedback.state == "archived":
@@ -130,7 +130,7 @@ def publish_feedback(
     feedback_id: str,
     data: VersionInput,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     feedback = writable_feedback(db, actor, feedback_id)
     if feedback.state != "draft":
@@ -154,7 +154,7 @@ def acknowledge_feedback(
     feedback_id: str,
     data: VersionInput,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     feedback = find_feedback(db, actor, feedback_id)
     if feedback.employee_id != actor.id:
@@ -189,7 +189,7 @@ def acknowledge_feedback(
 def revisions(
     feedback_id: str,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     feedback = find_feedback(db, actor, feedback_id)
     records = db.scalars(
@@ -210,7 +210,7 @@ def archive_feedback(
     feedback_id: str,
     data: VersionInput,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     feedback = writable_feedback(db, actor, feedback_id)
     if feedback.state != "published":
@@ -227,7 +227,7 @@ def archive_feedback(
 def comments(
     feedback_id: str,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     feedback = find_feedback(db, actor, feedback_id)
     if feedback.state == "draft":
@@ -256,7 +256,7 @@ def add_comment(
     feedback_id: str,
     data: CommentInput,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     feedback = find_feedback(db, actor, feedback_id)
     if feedback.state != "published":
@@ -279,7 +279,7 @@ def escalate_feedback(
     feedback_id: str,
     data: EscalationInput,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     feedback = find_feedback(db, actor, feedback_id)
     target = db.get(User, feedback.employee_id)
@@ -309,7 +309,7 @@ def resolve_escalation(
     feedback_id: str,
     data: ResolutionInput,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     feedback = find_feedback(db, actor, feedback_id)
     if actor.role != Role.SENIOR:

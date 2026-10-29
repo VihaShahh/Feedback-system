@@ -45,7 +45,7 @@ def checkins(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=25, ge=1, le=100),
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     target = employee_record(db, actor, employee_id or actor.id)
     query = select(CheckIn).where(CheckIn.employee_id == target.id)
@@ -58,7 +58,7 @@ def checkins(
 def create_checkin(
     data: CheckInCreate,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     week = data.week_of.isoformat()
     if db.scalar(
@@ -79,7 +79,7 @@ def respond(
     checkin_id: str,
     data: CheckInResponse,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     row = db.get(CheckIn, checkin_id)
     if row is None:

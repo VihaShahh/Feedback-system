@@ -35,7 +35,7 @@ def requests(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=25, ge=1, le=100),
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     query = (
         select(FeedbackRequest)
@@ -60,7 +60,7 @@ def requests(
 def create_request(
     data: RequestCreate,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     manager = db.get(User, actor.manager_id) if actor.manager_id else None
     if not manager or not manager.active or manager.role != Role.MANAGER:
@@ -86,7 +86,7 @@ def fulfil(
     request_id: str,
     data: FulfilInput,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     row = db.get(FeedbackRequest, request_id)
     target = db.get(User, row.employee_id) if row else None
@@ -118,7 +118,7 @@ def fulfil(
 def cancel(
     request_id: str,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     result = db.execute(
         update(FeedbackRequest)

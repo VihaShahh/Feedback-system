@@ -41,7 +41,7 @@ def goals(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=25, ge=1, le=100),
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     target = employee_record(db, actor, employee_id or actor.id)
     query = select(Goal).where(Goal.employee_id == target.id)
@@ -56,7 +56,7 @@ def goals(
 def create_goal(
     data: GoalCreate,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     target = employee_record(db, actor, data.employee_id or actor.id)
     row = Goal(
@@ -79,7 +79,7 @@ def update_goal(
     goal_id: str,
     data: GoalUpdate,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     row = db.get(Goal, goal_id)
     if not row:

@@ -49,7 +49,7 @@ def people(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=25, ge=1, le=100),
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     query = visible_people(actor)
     if q:
@@ -68,7 +68,7 @@ def people(
 def create_person(
     data: PersonCreate,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     require(actor, Permission.PEOPLE_MANAGE)
     if actor.role != Role.ADMIN and data.role != Role.EMPLOYEE:
@@ -93,7 +93,7 @@ def update_person(
     user_id: str,
     data: PersonUpdate,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     require(actor, Permission.PEOPLE_MANAGE)
     # Serialize graph and final-administrator changes on databases supporting row locks.
@@ -133,7 +133,7 @@ def update_person(
 def grants(
     user_id: str,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     if actor.role != Role.ADMIN:
         fail(403, "Only administrators manage grants")
@@ -148,7 +148,7 @@ def add_grant(
     user_id: str,
     data: GrantInput,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     if actor.role != Role.ADMIN:
         fail(403, "Only administrators manage grants")
@@ -166,7 +166,7 @@ def remove_grant(
     user_id: str,
     permission: Permission,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     if actor.role != Role.ADMIN:
         fail(403, "Only administrators manage grants")

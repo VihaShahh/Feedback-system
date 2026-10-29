@@ -17,7 +17,7 @@ def audit_events(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=25, ge=1, le=100),
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     require(actor, Permission.AUDIT_READ)
     query = select(AuditEvent)
@@ -42,7 +42,7 @@ def notifications(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=25, ge=1, le=100),
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     query = select(Notification).where(Notification.user_id == actor.id)
     unread = db.scalar(
@@ -70,7 +70,7 @@ def notifications(
 def read_notification(
     notification_id: str,
     actor: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     row = db.scalar(
         select(Notification).where(
