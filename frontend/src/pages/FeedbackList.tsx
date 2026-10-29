@@ -8,6 +8,7 @@ import { FeedbackCard } from "../components/FeedbackCard";
 import { Select } from "../components/Fields";
 import { Loading, Empty } from "../components/States";
 import { ErrorPanel } from "../components/ErrorPanel";
+import { ExportButton } from "../features/ExportButton";
 export default function FeedbackList() {
   const { session } = useSession();
   const [params, setParams] = useSearchParams();
@@ -54,6 +55,7 @@ export default function FeedbackList() {
         }
         action={
           <>
+            <ExportButton />
             {session?.capabilities.team && (
               <Link className="button primary" to="/feedback/new">
                 <Plus size={16} />
