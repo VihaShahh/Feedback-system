@@ -72,3 +72,31 @@ def create_checkin(
     db.flush()
     audit(db, actor, "checkin.created", row.id, "checkin")
     return payload(row)
+
+
+@router.post("/{checkin_id}/response")
+def respond(
+    checkin_id: str,
+    data: CheckInResponse,
+    actor: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    row = db.get(CheckIn, checkin_id)
+    if row is None:
+        fail(404, "Check-in not found")
+    target = employee_record(db, actor, row.employee_id)
+    if not manages(actor, target):
+        fail(403, "Only your current manager can respond")
+    result = db.execute(
+        update(CheckIn)
+        .where(CheckIn.id == row.id, CheckIn.response.is_(None))
+        .values(response=data.response, responder_id=actor.id)
+    )
+    if result.rowcount != 1:
+        fail(409, "This check-in already has a response")
+    db.expire(row)
+    audit(db, actor, "checkin.responded", row.id, "checkin")
+    notify(
+        db, row.employee_id, "checkin.responded", "Your manager responded to your check-in", row.id
+    )
+    return payload(row)
