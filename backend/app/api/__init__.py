@@ -1,5 +1,6 @@
 from .auth import router as auth
+from .feedback import router as feedback
 from .health import router as health
 from .people import router as people
 
-routers = [health, auth, people]
+routers = [health, auth, people, feedback]
