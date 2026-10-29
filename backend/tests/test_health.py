@@ -17,3 +17,12 @@ def test_health_has_request_identifier_and_readiness_requires_migrations():
 def test_application_instances_do_not_share_database_engine():
     settings = Settings(environment="test", database_url="sqlite:///:memory:")
     assert create_app(settings).state.engine is not create_app(settings).state.engine
+
+
+def test_readiness_rejects_an_outdated_schema_even_when_migration_table_exists(client, app):
+    from sqlalchemy import text
+
+    assert client.get("/api/v1/ready").status_code == 200
+    with app.state.engine.begin() as connection:
+        connection.execute(text("UPDATE alembic_version SET version_num = 'outdated'"))
+    assert client.get("/api/v1/ready").status_code == 503
